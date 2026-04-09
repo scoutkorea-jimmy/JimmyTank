@@ -86,14 +86,17 @@ export async function POST(request: NextRequest) {
 
     // Check if there's an update JSON in the reply
     let update = null;
-    const jsonMatch = reply.match(/\{"__update__":\s*\{[\s\S]*?\}\}/);
+    const jsonMatch = reply.match(/\{"__update__"[\s\S]*?\}[\s\r\n]*\}/);
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
-        update = parsed.__update__;
-        // Remove JSON from display text
-        reply = reply.replace(jsonMatch[0], "").trim();
-      } catch {}
+        if (parsed.__update__ && typeof parsed.__update__.systemPrompt === "string") {
+          update = parsed.__update__;
+          reply = reply.replace(jsonMatch[0], "").trim();
+        }
+      } catch {
+        console.warn("Persona chat: Failed to parse update JSON from reply");
+      }
     }
 
     return NextResponse.json({ reply, update });

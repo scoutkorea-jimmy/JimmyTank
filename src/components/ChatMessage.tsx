@@ -18,7 +18,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
             : "bg-zinc-100 dark:bg-zinc-800"
         }`}
       >
-        {isUser ? "👤" : message.senderName.split(" ")[0]}
+        {isUser ? "👤" : (message.senderName || "?").split(" ")[0]}
       </div>
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-3 ${
@@ -29,7 +29,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
       >
         {!isUser && (
           <div className="mb-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            {message.senderName}
+            {message.senderName || "알 수 없음"}
             {message.isRebuttal && (
               <span className="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-orange-600 dark:bg-orange-900 dark:text-orange-300">
                 반박

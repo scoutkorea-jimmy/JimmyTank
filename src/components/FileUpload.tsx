@@ -47,14 +47,18 @@ export default function FileUpload({
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error);
+        setError(data.error || "업로드 실패");
+        return;
+      }
+      if (!data.fileName || typeof data.content !== "string") {
+        setError("서버 응답이 올바르지 않습니다.");
         return;
       }
 
       onFileUploaded({
         fileName: data.fileName,
         content: data.content,
-        truncated: data.truncated,
+        truncated: !!data.truncated,
       });
     } catch {
       setError("업로드 실패");

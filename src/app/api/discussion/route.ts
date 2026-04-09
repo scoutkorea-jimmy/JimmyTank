@@ -94,13 +94,18 @@ export async function POST(request: NextRequest) {
       userMessage,
     } = body;
 
+    // Input validation
+    if (!topic || !memberData || memberData.length === 0) {
+      return NextResponse.json({ error: "필수 입력값이 누락되었습니다." }, { status: 400 });
+    }
+
     const keyError = validateApiKey(engine);
     if (keyError) {
       return NextResponse.json({ error: keyError }, { status: 500 });
     }
 
     const newMessages: Message[] = [];
-    const conversationHistory = buildConversationHistory(messages);
+    const conversationHistory = buildConversationHistory(messages || []);
     const isRebuttal = !!userMessage;
 
     for (const member of memberData) {
@@ -112,12 +117,12 @@ export async function POST(request: NextRequest) {
 
       const userPrompt = buildUserPrompt(
         topic,
-        description,
+        description || "",
         fullHistory,
         isRebuttal
       );
       // Build full system prompt: base + global rules + per-member rules + memories
-      let fullSystemPrompt = member.systemPrompt;
+      let fullSystemPrompt = member.systemPrompt || "";
       if (globalRules) fullSystemPrompt += `\n\n[공통 규칙]\n${globalRules}`;
       if (member.rules) fullSystemPrompt += `\n\n[개별 규칙]\n${member.rules}`;
       if (member.memories && member.memories.length > 0) {
@@ -125,11 +130,13 @@ export async function POST(request: NextRequest) {
         fullSystemPrompt += `\n\n[기억/컨텍스트]\n${memStr}`;
       }
 
-      const content = await generateResponse(
-        engine,
-        fullSystemPrompt,
-        userPrompt
-      );
+      let content: string;
+      try {
+        content = await generateResponse(engine, fullSystemPrompt, userPrompt);
+      } catch (err) {
+        console.error(`Error generating response for ${member.name}:`, err);
+        content = `[${member.name}의 응답을 생성하는 중 오류가 발생했습니다]`;
+      }
 
       newMessages.push({
         id: nanoid(),

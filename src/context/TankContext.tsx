@@ -119,18 +119,20 @@ export function TankProvider({ children }: { children: ReactNode }) {
 
   // Load from localStorage on mount
   useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         dispatch({ type: "LOAD_TANKS", tanks: JSON.parse(stored) });
       }
     } catch {
-      // ignore parse errors
+      console.warn("JimmyTank: Failed to load tanks from localStorage");
     }
   }, []);
 
   // Save to localStorage on change
   useEffect(() => {
+    if (typeof window === "undefined") return;
     if (state.tanks.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tanks));
     }

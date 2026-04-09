@@ -44,6 +44,7 @@ export function PersonaProvider({ children }: { children: ReactNode }) {
   const [globalRules, setGlobalRulesState] = useState<GlobalRules>({ content: "" });
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
       const c = localStorage.getItem(CUSTOM_KEY);
       if (c) setCustomPersonas(JSON.parse(c));
@@ -51,18 +52,23 @@ export function PersonaProvider({ children }: { children: ReactNode }) {
       if (o) setBuiltInOverrides(JSON.parse(o));
       const g = localStorage.getItem(GLOBAL_RULES_KEY);
       if (g) setGlobalRulesState(JSON.parse(g));
-    } catch {}
+    } catch {
+      console.warn("JimmyTank: Failed to load persona data from localStorage");
+    }
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     localStorage.setItem(CUSTOM_KEY, JSON.stringify(customPersonas));
   }, [customPersonas]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     localStorage.setItem(OVERRIDES_KEY, JSON.stringify(builtInOverrides));
   }, [builtInOverrides]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     localStorage.setItem(GLOBAL_RULES_KEY, JSON.stringify(globalRules));
   }, [globalRules]);
 

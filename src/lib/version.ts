@@ -1,4 +1,4 @@
-export const APP_VERSION = "01.005.000";
+export const APP_VERSION = "01.005.001";
 
 export interface VersionEntry {
   version: string;
@@ -8,6 +8,20 @@ export interface VersionEntry {
 }
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: "01.005.001",
+    date: "2026-04-09",
+    type: "hotfix",
+    changes: [
+      "SSR 환경 localStorage 접근 오류 수정 (AuthContext, TankContext, PersonaContext)",
+      "API null/undefined 체크 강화 (Discussion, EnhancePersona, PersonaChat)",
+      "멤버별 토론 응답 오류 시 전체 실패 대신 개별 에러 메시지 표시",
+      "입력값 검증 추가 (토론 API 필수 필드 체크)",
+      "JSON 파싱 에러 메시지 개선",
+      "파일 업로드 응답 검증 강화",
+      "ChatMessage senderName null 안전 처리",
+    ],
+  },
   {
     version: "01.005.000",
     date: "2026-04-09",

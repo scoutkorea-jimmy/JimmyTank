@@ -78,7 +78,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = JSON.parse(jsonMatch[0]);
+    let result;
+    try {
+      result = JSON.parse(jsonMatch[0]);
+    } catch {
+      return NextResponse.json(
+        { error: "AI 응답의 JSON 형식이 올바르지 않습니다. 다시 시도해주세요." },
+        { status: 500 }
+      );
+    }
+    if (!result.systemPrompt) {
+      return NextResponse.json(
+        { error: "AI가 유효한 프롬프트를 생성하지 못했습니다. 다시 시도해주세요." },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(result);
   } catch (error) {
     console.error("Enhance persona error:", error);

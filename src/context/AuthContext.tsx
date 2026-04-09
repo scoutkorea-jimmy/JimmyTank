@@ -48,6 +48,7 @@ function getUsers(): UserRecord[] {
 }
 
 function saveUsers(users: UserRecord[]) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
