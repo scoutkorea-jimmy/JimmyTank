@@ -1,4 +1,4 @@
-export type MemberRole =
+export type BuiltInRole =
   | "marketer"
   | "finance"
   | "tech"
@@ -6,20 +6,23 @@ export type MemberRole =
   | "strategy"
   | "creative";
 
+// MemberId can be a built-in role or a custom persona ID
+export type MemberId = string;
+
 export interface Member {
   id: string;
-  role: MemberRole;
   name: string;
   title: string;
   emoji: string;
   description: string;
   systemPrompt: string;
+  isCustom?: boolean;
 }
 
 export interface Message {
   id: string;
   tankId: string;
-  sender: "user" | MemberRole;
+  sender: "user" | string;
   senderName: string;
   content: string;
   timestamp: number;
@@ -34,7 +37,7 @@ export interface Tank {
   id: string;
   topic: string;
   description: string;
-  members: MemberRole[];
+  members: MemberId[];
   messages: Message[];
   status: TankStatus;
   engine: AIEngine;
@@ -47,7 +50,7 @@ export interface DiscussionRequest {
   tankId: string;
   topic: string;
   description: string;
-  members: MemberRole[];
+  memberData: Member[];
   messages: Message[];
   engine: AIEngine;
   userMessage?: string;
@@ -56,4 +59,17 @@ export interface DiscussionRequest {
 export interface DiscussionResponse {
   messages: Message[];
   summary?: string;
+}
+
+export interface EnhancePersonaRequest {
+  name: string;
+  title: string;
+  description: string;
+  engine: AIEngine;
+}
+
+export interface EnhancePersonaResponse {
+  systemPrompt: string;
+  enhancedDescription: string;
+  suggestedEmoji: string;
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { TankProvider } from "@/context/TankContext";
+import { PersonaProvider } from "@/context/PersonaContext";
 import Header from "@/components/Header";
 
 export const metadata: Metadata = {
@@ -17,10 +18,12 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
-        <TankProvider>
-          <Header />
-          {children}
-        </TankProvider>
+        <PersonaProvider>
+          <TankProvider>
+            <Header />
+            {children}
+          </TankProvider>
+        </PersonaProvider>
       </body>
     </html>
   );

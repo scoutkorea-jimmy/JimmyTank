@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { DiscussionRequest, Message, MemberRole, AIEngine } from "@/types";
-import { PERSONAS } from "@/lib/personas";
+import { DiscussionRequest, Message, Member, AIEngine } from "@/types";
 import { nanoid } from "nanoid";
 
 function buildConversationHistory(messages: Message[]): string {
@@ -29,7 +28,6 @@ function buildUserPrompt(
   }
 }
 
-// --- Claude ---
 async function generateWithClaude(
   systemPrompt: string,
   userPrompt: string
@@ -45,7 +43,6 @@ async function generateWithClaude(
   return textBlock ? textBlock.text : "";
 }
 
-// --- ChatGPT ---
 async function generateWithChatGPT(
   systemPrompt: string,
   userPrompt: string
@@ -90,7 +87,7 @@ export async function POST(request: NextRequest) {
       tankId,
       topic,
       description,
-      members,
+      memberData,
       messages,
       engine = "claude",
       userMessage,
@@ -105,8 +102,7 @@ export async function POST(request: NextRequest) {
     const conversationHistory = buildConversationHistory(messages);
     const isRebuttal = !!userMessage;
 
-    for (const role of members) {
-      const persona = PERSONAS[role];
+    for (const member of memberData) {
       const fullHistory =
         conversationHistory +
         (newMessages.length > 0
@@ -121,15 +117,15 @@ export async function POST(request: NextRequest) {
       );
       const content = await generateResponse(
         engine,
-        persona.systemPrompt,
+        member.systemPrompt,
         userPrompt
       );
 
       newMessages.push({
         id: nanoid(),
         tankId,
-        sender: role,
-        senderName: `${persona.emoji} ${persona.name} (${persona.title})`,
+        sender: member.id,
+        senderName: `${member.emoji} ${member.name} (${member.title})`,
         content,
         timestamp: Date.now(),
         isRebuttal,
@@ -139,7 +135,7 @@ export async function POST(request: NextRequest) {
     // Generate summary if discussion has been going on for a while
     let summary: string | undefined;
     const totalMessages = messages.length + newMessages.length;
-    if (totalMessages >= members.length * 3) {
+    if (totalMessages >= memberData.length * 3) {
       const allHistory =
         conversationHistory +
         "\n\n" +

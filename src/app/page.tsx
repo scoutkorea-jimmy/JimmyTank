@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PERSONAS, ALL_ROLES } from "@/lib/personas";
+import { BUILT_IN_PERSONAS, ALL_BUILT_IN_IDS } from "@/lib/personas";
 
 export default function Home() {
   return (
@@ -93,8 +93,8 @@ export default function Home() {
             AI 전문가 패널
           </h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {ALL_ROLES.map((role) => {
-              const p = PERSONAS[role];
+            {ALL_BUILT_IN_IDS.map((role) => {
+              const p = BUILT_IN_PERSONAS[role as keyof typeof BUILT_IN_PERSONAS];
               return (
                 <div
                   key={role}

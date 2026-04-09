@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Tank, Message, DiscussionRequest, DiscussionResponse } from "@/types";
 import { useTank } from "@/context/TankContext";
-import { PERSONAS } from "@/lib/personas";
+import { usePersona } from "@/context/PersonaContext";
 import ChatMessage from "./ChatMessage";
 import MemberList from "./MemberList";
 import { nanoid } from "nanoid";
@@ -14,6 +14,10 @@ interface DiscussionPanelProps {
 
 export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
   const { addMessage, addMessages, setStatus, setSummary } = useTank();
+  const { getPersona } = usePersona();
+
+  const getMemberData = () =>
+    tank.members.map((id) => getPersona(id)).filter(Boolean) as import("@/types").Member[];
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMember, setLoadingMember] = useState<string | null>(null);
@@ -45,7 +49,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         tankId: tank.id,
         topic: tank.topic,
         description: tank.description,
-        members: tank.members,
+        memberData: getMemberData(),
         messages: tank.messages,
         engine: tank.engine,
       };
@@ -96,7 +100,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         tankId: tank.id,
         topic: tank.topic,
         description: tank.description,
-        members: tank.members,
+        memberData: getMemberData(),
         messages: [...tank.messages, userMsg],
         engine: tank.engine,
         userMessage: userMsg.content,
@@ -135,7 +139,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         tankId: tank.id,
         topic: tank.topic,
         description: tank.description,
-        members: tank.members,
+        memberData: getMemberData(),
         messages: tank.messages,
         engine: tank.engine,
       };

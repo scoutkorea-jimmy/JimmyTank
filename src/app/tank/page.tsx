@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MemberRole, AIEngine } from "@/types";
+import { AIEngine } from "@/types";
 import { useTank } from "@/context/TankContext";
 import TankCard from "@/components/TankCard";
 import MemberSelector from "@/components/MemberSelector";
@@ -13,7 +13,7 @@ export default function TankListPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [topic, setTopic] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedMembers, setSelectedMembers] = useState<MemberRole[]>([
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([
     "marketer",
     "finance",
     "tech",

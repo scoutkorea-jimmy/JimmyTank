@@ -1,9 +1,8 @@
-import { Member, MemberRole } from "@/types";
+import { Member, BuiltInRole } from "@/types";
 
-export const PERSONAS: Record<MemberRole, Member> = {
+export const BUILT_IN_PERSONAS: Record<BuiltInRole, Member> = {
   marketer: {
-    id: "member-marketer",
-    role: "marketer",
+    id: "marketer",
     name: "민지",
     title: "마케팅 전문가",
     emoji: "📢",
@@ -17,8 +16,7 @@ export const PERSONAS: Record<MemberRole, Member> = {
 - 한국어로 답변합니다. 답변은 간결하고 핵심적으로 2-4문장으로 합니다.`,
   },
   finance: {
-    id: "member-finance",
-    role: "finance",
+    id: "finance",
     name: "준혁",
     title: "재무 전문가",
     emoji: "💰",
@@ -32,8 +30,7 @@ export const PERSONAS: Record<MemberRole, Member> = {
 - 한국어로 답변합니다. 답변은 간결하고 핵심적으로 2-4문장으로 합니다.`,
   },
   tech: {
-    id: "member-tech",
-    role: "tech",
+    id: "tech",
     name: "서연",
     title: "기술 전문가",
     emoji: "💻",
@@ -47,8 +44,7 @@ export const PERSONAS: Record<MemberRole, Member> = {
 - 한국어로 답변합니다. 답변은 간결하고 핵심적으로 2-4문장으로 합니다.`,
   },
   legal: {
-    id: "member-legal",
-    role: "legal",
+    id: "legal",
     name: "도윤",
     title: "법률 전문가",
     emoji: "⚖️",
@@ -62,8 +58,7 @@ export const PERSONAS: Record<MemberRole, Member> = {
 - 한국어로 답변합니다. 답변은 간결하고 핵심적으로 2-4문장으로 합니다.`,
   },
   strategy: {
-    id: "member-strategy",
-    role: "strategy",
+    id: "strategy",
     name: "하준",
     title: "전략 전문가",
     emoji: "🎯",
@@ -77,8 +72,7 @@ export const PERSONAS: Record<MemberRole, Member> = {
 - 한국어로 답변합니다. 답변은 간결하고 핵심적으로 2-4문장으로 합니다.`,
   },
   creative: {
-    id: "member-creative",
-    role: "creative",
+    id: "creative",
     name: "유나",
     title: "크리에이티브 전문가",
     emoji: "🎨",
@@ -93,11 +87,7 @@ export const PERSONAS: Record<MemberRole, Member> = {
   },
 };
 
-export const getMembersByRoles = (roles: MemberRole[]): Member[] => {
-  return roles.map((role) => PERSONAS[role]);
-};
-
-export const ALL_ROLES: MemberRole[] = [
+export const ALL_BUILT_IN_IDS: string[] = [
   "marketer",
   "finance",
   "tech",
@@ -105,3 +95,7 @@ export const ALL_ROLES: MemberRole[] = [
   "strategy",
   "creative",
 ];
+
+export function getBuiltInMember(id: string): Member | undefined {
+  return BUILT_IN_PERSONAS[id as BuiltInRole];
+}

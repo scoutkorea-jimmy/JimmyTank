@@ -1,24 +1,26 @@
 "use client";
 
-import { MemberRole } from "@/types";
-import { PERSONAS } from "@/lib/personas";
+import { usePersona } from "@/context/PersonaContext";
 
 interface MemberListProps {
-  members: MemberRole[];
+  members: string[];
 }
 
 export default function MemberList({ members }: MemberListProps) {
+  const { getPersona } = usePersona();
+
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
         참여 멤버
       </h3>
       <div className="space-y-2">
-        {members.map((role) => {
-          const persona = PERSONAS[role];
+        {members.map((id) => {
+          const persona = getPersona(id);
+          if (!persona) return null;
           return (
             <div
-              key={role}
+              key={id}
               className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50"
             >
               <span className="text-xl">{persona.emoji}</span>

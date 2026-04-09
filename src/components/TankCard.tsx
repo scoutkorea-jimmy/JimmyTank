@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Tank } from "@/types";
-import { PERSONAS } from "@/lib/personas";
+import { usePersona } from "@/context/PersonaContext";
 
 interface TankCardProps {
   tank: Tank;
@@ -10,6 +10,8 @@ interface TankCardProps {
 }
 
 export default function TankCard({ tank, onDelete }: TankCardProps) {
+  const { getPersona } = usePersona();
+
   const statusColors = {
     idle: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
     discussing:
@@ -59,15 +61,18 @@ export default function TankCard({ tank, onDelete }: TankCardProps) {
           {tank.description}
         </p>
         <div className="flex items-center gap-1">
-          {tank.members.map((role) => (
-            <span
-              key={role}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-sm dark:bg-zinc-800"
-              title={PERSONAS[role].name}
-            >
-              {PERSONAS[role].emoji}
-            </span>
-          ))}
+          {tank.members.map((memberId) => {
+            const persona = getPersona(memberId);
+            return (
+              <span
+                key={memberId}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-sm dark:bg-zinc-800"
+                title={persona?.name || memberId}
+              >
+                {persona?.emoji || "?"}
+              </span>
+            );
+          })}
           <span className="ml-2 text-xs text-zinc-400">
             {tank.messages.length}개 메시지
           </span>

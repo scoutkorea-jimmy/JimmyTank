@@ -1,35 +1,35 @@
 "use client";
 
-import { MemberRole } from "@/types";
-import { PERSONAS, ALL_ROLES } from "@/lib/personas";
+import { usePersona } from "@/context/PersonaContext";
 
 interface MemberSelectorProps {
-  selected: MemberRole[];
-  onChange: (roles: MemberRole[]) => void;
+  selected: string[];
+  onChange: (ids: string[]) => void;
 }
 
 export default function MemberSelector({
   selected,
   onChange,
 }: MemberSelectorProps) {
-  const toggle = (role: MemberRole) => {
-    if (selected.includes(role)) {
-      onChange(selected.filter((r) => r !== role));
+  const { allPersonas } = usePersona();
+
+  const toggle = (id: string) => {
+    if (selected.includes(id)) {
+      onChange(selected.filter((s) => s !== id));
     } else {
-      onChange([...selected, role]);
+      onChange([...selected, id]);
     }
   };
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {ALL_ROLES.map((role) => {
-        const persona = PERSONAS[role];
-        const isSelected = selected.includes(role);
+      {allPersonas.map((persona) => {
+        const isSelected = selected.includes(persona.id);
         return (
           <button
-            key={role}
+            key={persona.id}
             type="button"
-            onClick={() => toggle(role)}
+            onClick={() => toggle(persona.id)}
             className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
               isSelected
                 ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950"
@@ -43,6 +43,11 @@ export default function MemberSelector({
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {persona.title}
             </span>
+            {persona.isCustom && (
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                커스텀
+              </span>
+            )}
           </button>
         );
       })}
