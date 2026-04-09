@@ -17,14 +17,26 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMember, setLoadingMember] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [tank.messages]);
 
+  const handleApiResponse = async (res: Response) => {
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "오류가 발생했습니다.");
+      return null;
+    }
+    setError(null);
+    return data as DiscussionResponse;
+  };
+
   const startDiscussion = async () => {
     setIsLoading(true);
+    setError(null);
     setStatus(tank.id, "discussing");
     setLoadingMember("AI 멤버들이 검토 중...");
 
@@ -43,15 +55,17 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         body: JSON.stringify(req),
       });
 
-      const data: DiscussionResponse = await res.json();
+      const data = await handleApiResponse(res);
+      if (!data) return;
       if (data.messages) {
         addMessages(tank.id, data.messages);
       }
       if (data.summary) {
         setSummary(tank.id, data.summary);
       }
-    } catch (error) {
-      console.error("Discussion error:", error);
+    } catch (err) {
+      console.error("Discussion error:", err);
+      setError("네트워크 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
       setLoadingMember(null);
@@ -73,6 +87,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
     addMessage(tank.id, userMsg);
     setInput("");
     setIsLoading(true);
+    setError(null);
     setLoadingMember("AI 멤버들이 응답 중...");
 
     try {
@@ -91,15 +106,17 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         body: JSON.stringify(req),
       });
 
-      const data: DiscussionResponse = await res.json();
+      const data = await handleApiResponse(res);
+      if (!data) return;
       if (data.messages) {
         addMessages(tank.id, data.messages);
       }
       if (data.summary) {
         setSummary(tank.id, data.summary);
       }
-    } catch (error) {
-      console.error("Discussion error:", error);
+    } catch (err) {
+      console.error("Discussion error:", err);
+      setError("네트워크 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
       setLoadingMember(null);
@@ -108,6 +125,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
 
   const continueDiscussion = async () => {
     setIsLoading(true);
+    setError(null);
     setLoadingMember("AI 멤버들이 추가 토론 중...");
 
     try {
@@ -125,15 +143,17 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         body: JSON.stringify(req),
       });
 
-      const data: DiscussionResponse = await res.json();
+      const data = await handleApiResponse(res);
+      if (!data) return;
       if (data.messages) {
         addMessages(tank.id, data.messages);
       }
       if (data.summary) {
         setSummary(tank.id, data.summary);
       }
-    } catch (error) {
-      console.error("Discussion error:", error);
+    } catch (err) {
+      console.error("Discussion error:", err);
+      setError("네트워크 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
       setLoadingMember(null);
@@ -201,6 +221,11 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
                     <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" />
                   </div>
                   {loadingMember}
+                </div>
+              )}
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+                  {error}
                 </div>
               )}
               <div ref={messagesEndRef} />

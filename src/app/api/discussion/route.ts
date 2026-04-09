@@ -51,7 +51,10 @@ export async function POST(request: NextRequest) {
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY가 설정되지 않았습니다." },
+        {
+          error:
+            "ANTHROPIC_API_KEY가 설정되지 않았습니다. Vercel 대시보드 → Settings → Environment Variables에서 키를 추가해주세요.",
+        },
         { status: 500 }
       );
     }
