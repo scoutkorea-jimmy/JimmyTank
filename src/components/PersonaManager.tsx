@@ -108,6 +108,8 @@ export default function PersonaManager({ open, onClose }: Props) {
         emoji,
         description: description.trim(),
         systemPrompt: finalPrompt,
+        rules: "",
+        memories: [],
         isCustom: true,
       });
     }

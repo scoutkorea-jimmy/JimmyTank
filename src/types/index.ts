@@ -1,13 +1,18 @@
 export type BuiltInRole =
-  | "marketer"
-  | "finance"
-  | "tech"
-  | "legal"
-  | "strategy"
-  | "creative";
+  | "socrates"
+  | "aristotle"
+  | "machiavelli"
+  | "kant"
+  | "sunzi"
+  | "hypatia";
 
-// MemberId can be a built-in role or a custom persona ID
 export type MemberId = string;
+
+export interface MemoryEntry {
+  id: string;
+  content: string;
+  createdAt: number;
+}
 
 export interface Member {
   id: string;
@@ -16,7 +21,13 @@ export interface Member {
   emoji: string;
   description: string;
   systemPrompt: string;
+  rules: string;
+  memories: MemoryEntry[];
   isCustom?: boolean;
+}
+
+export interface GlobalRules {
+  content: string;
 }
 
 export interface Message {
@@ -51,6 +62,7 @@ export interface DiscussionRequest {
   topic: string;
   description: string;
   memberData: Member[];
+  globalRules: string;
   messages: Message[];
   engine: AIEngine;
   userMessage?: string;

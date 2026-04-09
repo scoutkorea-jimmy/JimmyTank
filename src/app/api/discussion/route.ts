@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       topic,
       description,
       memberData,
+      globalRules = "",
       messages,
       engine = "claude",
       userMessage,
@@ -115,9 +116,18 @@ export async function POST(request: NextRequest) {
         fullHistory,
         isRebuttal
       );
+      // Build full system prompt: base + global rules + per-member rules + memories
+      let fullSystemPrompt = member.systemPrompt;
+      if (globalRules) fullSystemPrompt += `\n\n[공통 규칙]\n${globalRules}`;
+      if (member.rules) fullSystemPrompt += `\n\n[개별 규칙]\n${member.rules}`;
+      if (member.memories && member.memories.length > 0) {
+        const memStr = member.memories.map((m) => `- ${m.content}`).join("\n");
+        fullSystemPrompt += `\n\n[기억/컨텍스트]\n${memStr}`;
+      }
+
       const content = await generateResponse(
         engine,
-        member.systemPrompt,
+        fullSystemPrompt,
         userPrompt
       );
 

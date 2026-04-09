@@ -1,4 +1,4 @@
-export const APP_VERSION = "01.003.000";
+export const APP_VERSION = "01.004.000";
 
 export interface VersionEntry {
   version: string;
@@ -8,6 +8,18 @@ export interface VersionEntry {
 }
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: "01.004.000",
+    date: "2026-04-09",
+    type: "feature",
+    changes: [
+      "기본 페르소나를 철학자 기반으로 재설계 (소크라테스, 아리스토텔레스, 마키아벨리, 칸트, 손자, 히파티아)",
+      "페르소나 클릭 시 상세 모달 (정보 수정, 규칙 설정, 메모리 CRUD)",
+      "영구 메모리 시스템: 채팅 삭제 후에도 페르소나별 기억 유지",
+      "공통규칙 + 캐릭터별 개별규칙 시스템",
+      "상단 헤더에 현재 시간 및 누적 컨텍스트 크기 실시간 표시",
+    ],
+  },
   {
     version: "01.003.000",
     date: "2026-04-09",
