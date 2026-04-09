@@ -1,4 +1,4 @@
-export const APP_VERSION = "01.004.000";
+export const APP_VERSION = "01.005.000";
 
 export interface VersionEntry {
   version: string;
@@ -8,6 +8,17 @@ export interface VersionEntry {
 }
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: "01.005.000",
+    date: "2026-04-09",
+    type: "feature",
+    changes: [
+      "멤버 세부설정 모달 6탭 개편 (프로필/배경지식/업무맥락/규칙/대화튜닝/메모리)",
+      "대화 기반 성격 튜닝: AI와 대화하며 말투·스타일 조율, '적용해줘'로 확정 시 자동 반영",
+      "배경지식 탭: 업계·회사·전문분야 자료 무제한 추가",
+      "업무맥락 탭: 토론 시 따라야 할 관점·우선순위·맥락 지시",
+    ],
+  },
   {
     version: "01.004.000",
     date: "2026-04-09",
