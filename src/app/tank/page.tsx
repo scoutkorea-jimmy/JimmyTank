@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MemberRole } from "@/types";
+import { MemberRole, AIEngine } from "@/types";
 import { useTank } from "@/context/TankContext";
 import TankCard from "@/components/TankCard";
 import MemberSelector from "@/components/MemberSelector";
@@ -18,10 +18,11 @@ export default function TankListPage() {
     "finance",
     "tech",
   ]);
+  const [engine, setEngine] = useState<AIEngine>("claude");
 
   const handleCreate = () => {
     if (!topic.trim() || selectedMembers.length < 2) return;
-    const tank = createTank(topic.trim(), description.trim(), selectedMembers);
+    const tank = createTank(topic.trim(), description.trim(), selectedMembers, engine);
     setTopic("");
     setDescription("");
     setShowCreate(false);
@@ -92,6 +93,37 @@ export default function TankListPage() {
                 selected={selectedMembers}
                 onChange={setSelectedMembers}
               />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                AI 엔진 선택
+              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEngine("claude")}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all ${
+                    engine === "claude"
+                      ? "border-orange-500 bg-orange-50 text-orange-700 dark:border-orange-400 dark:bg-orange-950 dark:text-orange-300"
+                      : "border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400"
+                  }`}
+                >
+                  <span className="text-lg">🟠</span>
+                  Claude
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEngine("chatgpt")}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all ${
+                    engine === "chatgpt"
+                      ? "border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-950 dark:text-green-300"
+                      : "border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400"
+                  }`}
+                >
+                  <span className="text-lg">🟢</span>
+                  ChatGPT
+                </button>
+              </div>
             </div>
             <div className="flex gap-3">
               <button

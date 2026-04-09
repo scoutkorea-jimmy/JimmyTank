@@ -28,6 +28,8 @@ export interface Message {
 
 export type TankStatus = "idle" | "discussing" | "concluded";
 
+export type AIEngine = "claude" | "chatgpt";
+
 export interface Tank {
   id: string;
   topic: string;
@@ -35,6 +37,7 @@ export interface Tank {
   members: MemberRole[];
   messages: Message[];
   status: TankStatus;
+  engine: AIEngine;
   summary?: string;
   createdAt: number;
   updatedAt: number;
@@ -46,6 +49,7 @@ export interface DiscussionRequest {
   description: string;
   members: MemberRole[];
   messages: Message[];
+  engine: AIEngine;
   userMessage?: string;
 }
 

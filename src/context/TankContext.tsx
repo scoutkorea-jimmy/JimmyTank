@@ -9,7 +9,7 @@ import {
   ReactNode,
 } from "react";
 import { nanoid } from "nanoid";
-import { Tank, Message, MemberRole, TankStatus } from "@/types";
+import { Tank, Message, MemberRole, TankStatus, AIEngine } from "@/types";
 
 interface TankState {
   tanks: Tank[];
@@ -95,7 +95,8 @@ interface TankContextType {
   createTank: (
     topic: string,
     description: string,
-    members: MemberRole[]
+    members: MemberRole[],
+    engine: AIEngine
   ) => Tank;
   deleteTank: (tankId: string) => void;
   setActiveTank: (tankId: string | null) => void;
@@ -136,12 +137,13 @@ export function TankProvider({ children }: { children: ReactNode }) {
   }, [state.tanks]);
 
   const createTank = useCallback(
-    (topic: string, description: string, members: MemberRole[]) => {
+    (topic: string, description: string, members: MemberRole[], engine: AIEngine) => {
       const tank: Tank = {
         id: nanoid(),
         topic,
         description,
         members,
+        engine,
         messages: [],
         status: "idle",
         createdAt: Date.now(),

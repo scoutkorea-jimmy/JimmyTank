@@ -47,6 +47,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         description: tank.description,
         members: tank.members,
         messages: tank.messages,
+        engine: tank.engine,
       };
 
       const res = await fetch("/api/discussion", {
@@ -97,6 +98,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         description: tank.description,
         members: tank.members,
         messages: [...tank.messages, userMsg],
+        engine: tank.engine,
         userMessage: userMsg.content,
       };
 
@@ -135,6 +137,7 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
         description: tank.description,
         members: tank.members,
         messages: tank.messages,
+        engine: tank.engine,
       };
 
       const res = await fetch("/api/discussion", {
@@ -171,6 +174,13 @@ export default function DiscussionPanel({ tank }: DiscussionPanelProps) {
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {tank.description}
           </p>
+          <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            tank.engine === "chatgpt"
+              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+              : "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+          }`}>
+            {tank.engine === "chatgpt" ? "🟢 ChatGPT" : "🟠 Claude"}
+          </span>
         </div>
         <MemberList members={tank.members} />
         {tank.summary && (

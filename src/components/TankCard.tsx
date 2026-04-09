@@ -41,6 +41,13 @@ export default function TankCard({ tank, onDelete }: TankCardProps) {
           >
             {statusLabels[tank.status]}
           </span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            tank.engine === "chatgpt"
+              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+              : "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+          }`}>
+            {tank.engine === "chatgpt" ? "GPT" : "Claude"}
+          </span>
           <span className="text-xs text-zinc-400">
             {new Date(tank.createdAt).toLocaleDateString("ko-KR")}
           </span>
