@@ -1,4 +1,4 @@
-export const APP_VERSION = "01.005.001";
+export const APP_VERSION = "01.006.000";
 
 export interface VersionEntry {
   version: string;
@@ -8,6 +8,18 @@ export interface VersionEntry {
 }
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: "01.006.000",
+    date: "2026-04-09",
+    type: "feature",
+    changes: [
+      "페르소나 전문성 전면 강화: 각 분야 15년차 전문가 수준으로 시스템 프롬프트 재작성",
+      "멤버 관리 모달에서 클릭 시 세부설정 진입 (Tank 헤더가 아닌 멤버관리 버튼에서)",
+      "자동 토론: Tank 생성 시 즉시 시작, 일시정지 버튼 누를 때까지 연속 토론",
+      "셀프 컨텍스트 고도화: 매 2라운드마다 각 멤버의 인사이트 자동 추출 및 메모리 저장",
+      "사용자 개입: 토론 중 언제든 의견 입력 가능, AI가 즉시 반응 후 토론 재개",
+    ],
+  },
   {
     version: "01.005.001",
     date: "2026-04-09",

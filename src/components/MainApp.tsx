@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { nanoid } from "nanoid";
 import { Tank, Message, AIEngine, DiscussionRequest, DiscussionResponse, Member } from "@/types";
 import { useTank } from "@/context/TankContext";
@@ -15,7 +15,6 @@ import ChatMessage from "@/components/ChatMessage";
 import MemberSelector from "@/components/MemberSelector";
 import FileUpload from "@/components/FileUpload";
 import PersonaManager from "@/components/PersonaManager";
-import PersonaDetailModal from "@/components/PersonaDetailModal";
 import VersionHistoryModal from "@/components/VersionHistoryModal";
 
 interface UploadedFile {
@@ -24,10 +23,8 @@ interface UploadedFile {
   truncated: boolean;
 }
 
-// --- Clock + Context Size ---
 function useHeaderInfo(tanks: Tank[], allPersonas: Member[]) {
   const [time, setTime] = useState(new Date());
-
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -35,29 +32,30 @@ function useHeaderInfo(tanks: Tank[], allPersonas: Member[]) {
 
   const contextSize = (() => {
     let bytes = 0;
-    for (const t of tanks) {
-      bytes += JSON.stringify(t.messages).length;
-      bytes += (t.description || "").length;
-    }
-    for (const p of allPersonas) {
-      bytes += (p.systemPrompt || "").length;
-      bytes += (p.rules || "").length;
-      for (const m of p.memories || []) bytes += m.content.length;
-    }
+    for (const t of tanks) { bytes += JSON.stringify(t.messages).length; bytes += (t.description || "").length; }
+    for (const p of allPersonas) { bytes += (p.systemPrompt || "").length; bytes += (p.rules || "").length; for (const m of p.memories || []) bytes += m.content.length; }
     if (bytes < 1024) return `${bytes}B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   })();
 
-  const timeStr = time.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const dateStr = time.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" });
+  return {
+    timeStr: time.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    dateStr: time.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }),
+    contextSize,
+  };
+}
 
-  return { timeStr, dateStr, contextSize };
+function buildConversationSummary(messages: Message[]): string {
+  return messages.slice(-10).map((m) => {
+    const name = m.sender === "user" ? "[사용자]" : `[${m.senderName}]`;
+    return `${name}: ${m.content}`;
+  }).join("\n\n");
 }
 
 export default function MainApp() {
   const { state, createTank, deleteTank, addMessage, addMessages, setStatus, setSummary } = useTank();
-  const { allPersonas, getPersona, globalRules, setGlobalRules } = usePersona();
+  const { allPersonas, getPersona, globalRules, setGlobalRules, addMemory } = usePersona();
   const { auth, logout } = useAuth();
   const { timeStr, dateStr, contextSize } = useHeaderInfo(state.tanks, allPersonas);
 
@@ -67,7 +65,6 @@ export default function MainApp() {
   const [showPersonaManager, setShowPersonaManager] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showGlobalRules, setShowGlobalRules] = useState(false);
-  const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
   const [globalRulesEdit, setGlobalRulesEdit] = useState("");
 
   // Create Tank Form
@@ -82,6 +79,9 @@ export default function MainApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isAutoRunning, setIsAutoRunning] = useState(false);
+  const autoRunRef = useRef(false);
+  const roundCountRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const activeTank = state.tanks.find((t) => t.id === activeTankId);
@@ -89,6 +89,114 @@ export default function MainApp() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeTank?.messages]);
+
+  // --- Discussion API ---
+  const getMemberData = useCallback((): Member[] =>
+    (activeTank?.members || []).map((id) => getPersona(id)).filter(Boolean) as Member[],
+    [activeTank?.members, getPersona]
+  );
+
+  const callDiscussion = useCallback(async (tank: Tank, msgs: Message[], userMsg?: string) => {
+    const memberData = tank.members.map((id) => getPersona(id)).filter(Boolean) as Member[];
+    const req: DiscussionRequest = {
+      tankId: tank.id, topic: tank.topic, description: tank.description,
+      memberData, globalRules: globalRules.content,
+      messages: msgs, engine: tank.engine, userMessage: userMsg,
+    };
+    const res = await fetch("/api/discussion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    const data = await res.json();
+    if (!res.ok) { setError(data.error || "오류 발생"); return null; }
+    setError(null);
+    return data as DiscussionResponse;
+  }, [getPersona, globalRules.content]);
+
+  // --- Self-evolve: Extract insights and add to memories ---
+  const extractInsights = useCallback(async (tank: Tank, newMessages: Message[]) => {
+    const recentText = buildConversationSummary(newMessages);
+    const memberData = tank.members.map((id) => getPersona(id)).filter(Boolean) as Member[];
+
+    for (const member of memberData) {
+      try {
+        const res = await fetch("/api/extract-insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            memberId: member.id, memberName: member.name, memberTitle: member.title,
+            recentMessages: recentText, engine: tank.engine,
+          }),
+        });
+        const data = await res.json();
+        if (data.insights && data.insights.length > 0) {
+          for (const insight of data.insights) {
+            addMemory(member.id, `[자동학습] ${insight}`);
+          }
+        }
+      } catch {
+        // Silently ignore insight extraction failures
+      }
+    }
+  }, [getPersona, addMemory]);
+
+  // --- Auto-discussion loop ---
+  const runAutoDiscussion = useCallback(async (tank: Tank) => {
+    if (!autoRunRef.current) return;
+
+    setIsLoading(true);
+    setLoadingMsg("토론 진행 중...");
+
+    try {
+      // Get latest tank state
+      const currentTank = state.tanks.find((t) => t.id === tank.id);
+      if (!currentTank || !autoRunRef.current) return;
+
+      const data = await callDiscussion(currentTank, currentTank.messages);
+      if (!autoRunRef.current) return;
+
+      if (data?.messages) {
+        addMessages(tank.id, data.messages);
+        roundCountRef.current += 1;
+
+        // Extract insights every 2 rounds for self-evolution
+        if (roundCountRef.current % 2 === 0) {
+          extractInsights(currentTank, data.messages).catch(() => {});
+        }
+      }
+      if (data?.summary) setSummary(tank.id, data.summary);
+
+      // Continue if still running (with a small delay)
+      if (autoRunRef.current) {
+        setTimeout(() => runAutoDiscussion(tank), 1500);
+      }
+    } catch {
+      setError("네트워크 오류");
+      autoRunRef.current = false;
+      setIsAutoRunning(false);
+    } finally {
+      if (!autoRunRef.current) {
+        setIsLoading(false);
+        setLoadingMsg(null);
+      }
+    }
+  }, [state.tanks, callDiscussion, addMessages, setSummary, extractInsights]);
+
+  const startAutoDiscussion = useCallback((tank: Tank) => {
+    autoRunRef.current = true;
+    roundCountRef.current = 0;
+    setIsAutoRunning(true);
+    setStatus(tank.id, "discussing");
+    runAutoDiscussion(tank);
+  }, [setStatus, runAutoDiscussion]);
+
+  const stopAutoDiscussion = useCallback(() => {
+    autoRunRef.current = false;
+    setIsAutoRunning(false);
+    setIsLoading(false);
+    setLoadingMsg(null);
+  }, []);
 
   // --- Tank CRUD ---
   const handleCreate = () => {
@@ -101,82 +209,50 @@ export default function MainApp() {
     setUploadedFiles([]);
     setShowCreate(false);
     setActiveTankId(tank.id);
+    // Auto-start discussion
+    setTimeout(() => startAutoDiscussion(tank), 100);
   };
 
   const handleDelete = (id: string) => {
     if (!confirm("이 Tank를 삭제하시겠습니까?")) return;
+    if (isAutoRunning && activeTankId === id) stopAutoDiscussion();
     deleteTank(id);
     if (activeTankId === id) setActiveTankId(null);
   };
 
-  // --- Discussion API ---
-  const getMemberData = (): Member[] =>
-    (activeTank?.members || []).map((id) => getPersona(id)).filter(Boolean) as Member[];
-
-  const callDiscussion = async (msgs: Message[], userMsg?: string) => {
-    if (!activeTank) return;
-    const req: DiscussionRequest = {
-      tankId: activeTank.id,
-      topic: activeTank.topic,
-      description: activeTank.description,
-      memberData: getMemberData(),
-      globalRules: globalRules.content,
-      messages: msgs,
-      engine: activeTank.engine,
-      userMessage: userMsg,
-    };
-    const res = await fetch("/api/discussion", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req),
-    });
-    const data = await res.json();
-    if (!res.ok) { setError(data.error || "오류 발생"); return null; }
-    setError(null);
-    return data as DiscussionResponse;
-  };
-
-  const startDiscussion = async () => {
-    if (!activeTank) return;
-    setIsLoading(true); setError(null);
-    setStatus(activeTank.id, "discussing");
-    setLoadingMsg("AI 멤버들이 검토 중...");
-    try {
-      const data = await callDiscussion(activeTank.messages);
-      if (data?.messages) addMessages(activeTank.id, data.messages);
-      if (data?.summary) setSummary(activeTank.id, data.summary);
-    } catch { setError("네트워크 오류"); }
-    finally { setIsLoading(false); setLoadingMsg(null); }
-  };
-
+  // User message: pause auto, send, then resume
   const sendUserMessage = async () => {
     if (!input.trim() || !activeTank) return;
+    const wasRunning = autoRunRef.current;
+    if (wasRunning) stopAutoDiscussion();
+
     const userMsg: Message = {
       id: nanoid(), tankId: activeTank.id, sender: "user",
       senderName: "사용자", content: input.trim(), timestamp: Date.now(),
     };
     addMessage(activeTank.id, userMsg);
     setInput("");
-    setIsLoading(true); setError(null);
+    setIsLoading(true);
+    setError(null);
     setLoadingMsg("AI 멤버들이 응답 중...");
+
     try {
-      const data = await callDiscussion([...activeTank.messages, userMsg], userMsg.content);
+      const data = await callDiscussion(activeTank, [...activeTank.messages, userMsg], userMsg.content);
       if (data?.messages) addMessages(activeTank.id, data.messages);
       if (data?.summary) setSummary(activeTank.id, data.summary);
     } catch { setError("네트워크 오류"); }
     finally { setIsLoading(false); setLoadingMsg(null); }
+
+    // Resume auto discussion if it was running
+    if (wasRunning && activeTank) {
+      setTimeout(() => startAutoDiscussion(activeTank), 500);
+    }
   };
 
-  const continueDiscussion = async () => {
-    if (!activeTank) return;
-    setIsLoading(true); setError(null); setLoadingMsg("추가 토론 중...");
-    try {
-      const data = await callDiscussion(activeTank.messages);
-      if (data?.messages) addMessages(activeTank.id, data.messages);
-      if (data?.summary) setSummary(activeTank.id, data.summary);
-    } catch { setError("네트워크 오류"); }
-    finally { setIsLoading(false); setLoadingMsg(null); }
-  };
+  // Cleanup on unmount or tank change
+  useEffect(() => {
+    return () => { autoRunRef.current = false; };
+  }, [activeTankId]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -186,7 +262,6 @@ export default function MainApp() {
           <span className="text-xl">🐟</span>
           <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">JimmyTank</span>
         </div>
-        {/* Center: Time + Context */}
         <div className="flex items-center gap-4 text-xs text-zinc-500">
           <div className="flex items-center gap-1.5">
             <span className="text-zinc-400">📅</span>
@@ -198,7 +273,6 @@ export default function MainApp() {
             <span>컨텍스트: <span className="font-mono font-medium text-zinc-700 dark:text-zinc-300">{contextSize}</span></span>
           </div>
         </div>
-        {/* Right */}
         <div className="flex items-center gap-2">
           <Badge variant="default">{auth.username}</Badge>
           <Button variant="ghost" size="sm" onClick={() => { setGlobalRulesEdit(globalRules.content); setShowGlobalRules(true); }}>공통규칙</Button>
@@ -221,7 +295,7 @@ export default function MainApp() {
             ) : (
               <div className="space-y-1">
                 {state.tanks.sort((a, b) => b.updatedAt - a.updatedAt).map((tank) => (
-                  <div key={tank.id} onClick={() => setActiveTankId(tank.id)}
+                  <div key={tank.id} onClick={() => { if (isAutoRunning) stopAutoDiscussion(); setActiveTankId(tank.id); }}
                     className={`group cursor-pointer rounded-lg p-3 transition-colors ${activeTankId === tank.id ? "bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-800" : "hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}>
                     <div className="mb-1 flex items-center gap-1.5">
                       <Badge variant={tank.engine === "chatgpt" ? "green" : "orange"}>{tank.engine === "chatgpt" ? "GPT" : "Claude"}</Badge>
@@ -234,7 +308,7 @@ export default function MainApp() {
                     <div className="mt-1 flex items-center gap-0.5">
                       {tank.members.slice(0, 4).map((mid) => {
                         const p = getPersona(mid);
-                        return <span key={mid} className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedPersonaId(mid); }}>{p?.emoji || "?"}</span>;
+                        return <span key={mid} className="text-xs">{p?.emoji || "?"}</span>;
                       })}
                       {tank.members.length > 4 && <span className="text-[10px] text-zinc-400">+{tank.members.length - 4}</span>}
                       <span className="ml-auto text-[10px] text-zinc-400">{tank.messages.length}개</span>
@@ -253,14 +327,14 @@ export default function MainApp() {
               <div className="mb-4 text-6xl">🐟</div>
               <h2 className="mb-2 text-xl font-semibold text-zinc-700 dark:text-zinc-300">JimmyTank</h2>
               <p className="mb-6 max-w-md text-sm text-zinc-500">
-                철학자 AI 전문가들이 당신의 아이디어를 다각도로 검토합니다.<br />
-                왼쪽에서 Tank를 선택하거나 새로 만들어보세요.
+                AI 전문가들이 당신의 아이디어를 다각도로 검토합니다.<br />
+                Tank를 만들면 자동으로 토론이 시작됩니다.
               </p>
               <Button onClick={() => setShowCreate(true)}>+ 새 Tank 만들기</Button>
             </div>
           ) : (
             <>
-              {/* Discussion Header with clickable personas */}
+              {/* Discussion Header */}
               <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="flex-1 min-w-0">
                   <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{activeTank.topic}</h2>
@@ -268,28 +342,28 @@ export default function MainApp() {
                     <Badge variant={activeTank.engine === "chatgpt" ? "green" : "orange"}>
                       {activeTank.engine === "chatgpt" ? "ChatGPT" : "Claude"}
                     </Badge>
-                    {activeTank.members.map((id) => {
-                      const p = getPersona(id);
-                      if (!p) return null;
-                      return (
-                        <button key={id} onClick={() => setSelectedPersonaId(id)}
-                          className="flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 hover:bg-zinc-200 transition-colors dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700">
-                          <span>{p.emoji}</span>
-                          <span>{p.name}</span>
-                          {(p.memories?.length || 0) > 0 && <span className="text-blue-500">💾{p.memories.length}</span>}
-                        </button>
-                      );
-                    })}
+                    <span className="text-xs text-zinc-400">
+                      {activeTank.members.map((id) => { const p = getPersona(id); return p ? `${p.emoji}${p.name}` : "?"; }).join("  ")}
+                    </span>
                   </div>
                 </div>
+                {/* Play/Pause Button */}
+                {isAutoRunning ? (
+                  <Button variant="danger" size="sm" onClick={stopAutoDiscussion} className="animate-pulse">
+                    ⏸ 일시정지
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => activeTank && startAutoDiscussion(activeTank)}>
+                    ▶ 토론 재개
+                  </Button>
+                )}
               </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4">
-                {activeTank.messages.length === 0 ? (
+                {activeTank.messages.length === 0 && !isLoading ? (
                   <div className="flex h-full flex-col items-center justify-center">
-                    <p className="mb-4 text-sm text-zinc-500">토론을 시작해보세요</p>
-                    <Button onClick={startDiscussion} disabled={isLoading}>{isLoading ? "시작 중..." : "🚀 토론 시작"}</Button>
+                    <p className="text-sm text-zinc-500">토론이 곧 자동으로 시작됩니다...</p>
                   </div>
                 ) : (
                   <div className="mx-auto max-w-3xl space-y-4">
@@ -304,6 +378,7 @@ export default function MainApp() {
                           <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" />
                         </div>
                         {loadingMsg}
+                        {isAutoRunning && <Badge variant="success">자동 토론 중</Badge>}
                       </div>
                     )}
                     {error && (
@@ -314,19 +389,16 @@ export default function MainApp() {
                 )}
               </div>
 
-              {/* Input */}
-              {activeTank.messages.length > 0 && (
-                <div className="border-t border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-                  <div className="mx-auto flex max-w-3xl items-center gap-2">
-                    <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendUserMessage()}
-                      placeholder="의견을 입력하세요..." disabled={isLoading}
-                      className="flex-1 rounded-full border border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900" />
-                    <Button onClick={sendUserMessage} disabled={isLoading || !input.trim()} className="rounded-full">전송</Button>
-                    <Button variant="secondary" onClick={continueDiscussion} disabled={isLoading} className="rounded-full" title="추가 토론">🔄</Button>
-                  </div>
+              {/* Input - always visible */}
+              <div className="border-t border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+                <div className="mx-auto flex max-w-3xl items-center gap-2">
+                  <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendUserMessage()}
+                    placeholder="의견을 입력하면 AI가 즉시 반응합니다..."
+                    className="flex-1 rounded-full border border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-white dark:border-zinc-700 dark:bg-zinc-900" />
+                  <Button onClick={sendUserMessage} disabled={!input.trim()} className="rounded-full">전송</Button>
                 </div>
-              )}
+              </div>
             </>
           )}
         </main>
@@ -365,16 +437,15 @@ export default function MainApp() {
       {/* Global Rules Modal */}
       <Modal open={showGlobalRules} onClose={() => setShowGlobalRules(false)} title="공통 규칙">
         <div className="space-y-3">
-          <p className="text-xs text-zinc-500">모든 AI 멤버에게 공통으로 적용되는 규칙입니다. 각 캐릭터별 개별 규칙은 멤버를 클릭하여 설정하세요.</p>
+          <p className="text-xs text-zinc-500">모든 AI 멤버에게 공통으로 적용되는 규칙입니다.</p>
           <TextArea value={globalRulesEdit} onChange={(e) => setGlobalRulesEdit(e.target.value)} rows={8}
-            placeholder="예:&#10;- 모든 답변은 한국어로 합니다.&#10;- 근거 없는 주장은 하지 않습니다.&#10;- 서로의 의견을 존중하되 논리적으로 반박합니다." />
+            placeholder={"예:\n- 모든 답변은 한국어로 합니다.\n- 근거 없는 주장은 하지 않습니다.\n- 서로의 의견을 존중하되 논리적으로 반박합니다."} />
           <Button onClick={() => { setGlobalRules({ content: globalRulesEdit }); setShowGlobalRules(false); }}>저장</Button>
         </div>
       </Modal>
 
       {/* Modals */}
       <PersonaManager open={showPersonaManager} onClose={() => setShowPersonaManager(false)} />
-      <PersonaDetailModal personaId={selectedPersonaId} onClose={() => setSelectedPersonaId(null)} />
       <VersionHistoryModal open={showVersionHistory} onClose={() => setShowVersionHistory(false)} />
     </div>
   );

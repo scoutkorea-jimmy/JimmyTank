@@ -9,17 +9,21 @@ import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import { Input, TextArea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
+import PersonaDetailModal from "@/components/PersonaDetailModal";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
+// State for detail modal is managed inside
+
 export default function PersonaManager({ open, onClose }: Props) {
-  const { customPersonas, addPersona, updatePersona, deletePersona } =
+  const { customPersonas, allPersonas, addPersona, updatePersona, deletePersona } =
     usePersona();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [detailPersonaId, setDetailPersonaId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
@@ -121,6 +125,7 @@ export default function PersonaManager({ open, onClose }: Props) {
   );
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title="멤버 관리" maxWidth="max-w-3xl">
       {!showForm ? (
         <div className="space-y-4">
@@ -132,16 +137,20 @@ export default function PersonaManager({ open, onClose }: Props) {
           <div>
             <h4 className="mb-2 text-xs font-semibold text-zinc-400">기본 멤버</h4>
             <div className="grid gap-2 sm:grid-cols-2">
-              {builtInList.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                  <span className="text-2xl">{p.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{p.name}</div>
-                    <div className="text-xs text-zinc-500 truncate">{p.title}</div>
+              {builtInList.map((p) => {
+                const current = allPersonas.find((a) => a.id === p.id) || p;
+                return (
+                  <div key={p.id} onClick={() => setDetailPersonaId(p.id)}
+                    className="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 cursor-pointer hover:bg-zinc-50 transition-colors dark:border-zinc-800 dark:hover:bg-zinc-800/50">
+                    <span className="text-2xl">{current.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{current.name}</div>
+                      <div className="text-xs text-zinc-500 truncate">{current.title}</div>
+                    </div>
+                    <Badge>기본</Badge>
                   </div>
-                  <Badge>기본</Badge>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -153,17 +162,18 @@ export default function PersonaManager({ open, onClose }: Props) {
               </h4>
               <div className="grid gap-2 sm:grid-cols-2">
                 {customPersonas.map((p) => (
-                  <div key={p.id} className="group flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                  <div key={p.id} onClick={() => setDetailPersonaId(p.id)}
+                    className="group flex items-center gap-3 rounded-lg border border-zinc-200 p-3 cursor-pointer hover:bg-zinc-50 transition-colors dark:border-zinc-800 dark:hover:bg-zinc-800/50">
                     <span className="text-2xl">{p.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{p.name}</div>
                       <div className="text-xs text-zinc-500 truncate">{p.title}</div>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => startEdit(p)} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800" title="수정">
+                      <button onClick={(e) => { e.stopPropagation(); startEdit(p); }} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800" title="수정">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       </button>
-                      <button onClick={() => { if (confirm(`"${p.name}" 삭제?`)) deletePersona(p.id); }} className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950" title="삭제">
+                      <button onClick={(e) => { e.stopPropagation(); if (confirm(`"${p.name}" 삭제?`)) deletePersona(p.id); }} className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950" title="삭제">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     </div>
@@ -209,5 +219,7 @@ export default function PersonaManager({ open, onClose }: Props) {
         </div>
       )}
     </Modal>
+    <PersonaDetailModal personaId={detailPersonaId} onClose={() => setDetailPersonaId(null)} />
+    </>
   );
 }
